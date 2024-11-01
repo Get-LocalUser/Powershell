@@ -16,10 +16,10 @@ $EntraUsers = Get-EntraUser -All
 $EntraUsersLocation = foreach ($User in $EntraUsers) {
     if ($User.usageLocation -eq $null) {
         [pscustomobject]@{
-            Id               = $user.Id
-            DisplayName      = $user.DisplayName
-            UserPrincipalName = $user.UserPrincipalName
-            usageLocation = $user.usageLocation
+            Id                  = $user.Id
+            DisplayName         = $user.DisplayName
+            UserPrincipalName   = $user.UserPrincipalName
+            usageLocation       = $user.usageLocation
         }
     }
 }
