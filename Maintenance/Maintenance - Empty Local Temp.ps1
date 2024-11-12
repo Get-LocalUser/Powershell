@@ -2,7 +2,6 @@
 =============================================================================================
 Name:           Maintenance - Empty Local Temp
 Description:    This script deletes the contents AppData\Local\Temp to help with declutter as well as the ShareFile Add-in issue in Outlook.
-Filepath:       \\usbot-unity9169-p1\Bot_Common\IT\PS Scripts
 Prerequisites:  N/A
 
 Script Tasks: 

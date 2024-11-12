@@ -2,7 +2,6 @@
 =============================================================================================
 Name:           Networking - Get and Reset
 Description:    This script will get a predefined list of Network Adapter properties and as if you want to flush the DNS cache and retrieve a new IP address.
-Filepath:       \\usbot-unity9169-p1\Bot_Common\IT\PS Scripts
 Prerequisites:  N/A
 
 Script Tasks: 

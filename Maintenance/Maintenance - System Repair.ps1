@@ -2,7 +2,6 @@
 =============================================================================================
 Name:           System Repair
 Description:    This script executes common commands that check and repair Windows files, volumes etc.
-Filepath:       \\usbot-unity9169-p1\Bot_Common\IT\PS Scripts
 Prerequisites:  N/A
 
 Script Tasks: 
