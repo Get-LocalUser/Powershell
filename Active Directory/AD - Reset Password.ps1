@@ -25,6 +25,6 @@ function GetUsername {
 $Username = GetUsername
 
 $NewPassword = Read-Host -Prompt "Enter new password here" -AsSecureString
-Set-ADAccountPassword -Identity $Username -NewPassword (ConvertTo-SecureString $NewPassword -AsPlainText -Force) -Reset
+Set-ADAccountPassword -Identity $Username -NewPassword $NewPassword -Reset
 Set-ADUser -Identity $Username -PasswordNeverExpires $true -ChangePasswordAtLogon $false
 Write-Host "Password reset for '$Username' is completed." -ForegroundColor Green
