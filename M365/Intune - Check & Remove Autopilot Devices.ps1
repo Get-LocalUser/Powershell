@@ -8,7 +8,7 @@ if (!$RequiredModule) {
 Connect-MgGraph -Scopes "DeviceManagementServiceConfig.Read.All, DeviceManagementServiceConfig.ReadWrite.All,"
 
 # Define CSV file
-$CsvFile = "C:\Users\harison\Desktop\Book1.csv"
+$CsvFile = "C:\??"
 
 $ImportedCsv = Import-Csv -Path $CsvFile
 
