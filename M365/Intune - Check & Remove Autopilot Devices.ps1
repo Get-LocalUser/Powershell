@@ -23,7 +23,7 @@ foreach ($row in $ImportedCSV) {
     }
 
     # Get the devices in the Autopilot service
-    $autopilotdevices = Get-MgBetaDeviceManagementWindowsAutopilotDeviceIdentity | Select-Object SerialNumber | Where-Object SerialNumber -EQ $serial
+    $autopilotdevices = Get-MgBetaDeviceManagementWindowsAutopilotDeviceIdentity | Where-Object {$_.SerialNumber -eq $serial}
 
     if ($autopilotdevices) {
         Write-Host "Serial number '$serial' FOUND in Autopilot." -ForegroundColor Green
@@ -56,3 +56,5 @@ if ($question -eq "Y") {
         }
     }
 }
+
+Write-Host "Don't forget to sign out of the graph!." -ForegroundColor Yellow
