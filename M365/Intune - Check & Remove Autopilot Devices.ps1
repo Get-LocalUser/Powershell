@@ -2,13 +2,14 @@
 $RequiredModule = Get-InstalledModule -Name Microsoft.Graph.Beta
 if (!$RequiredModule) {
         Install-Module -Name Microsoft.Graph.Beta
+        Import-Module
     }
 
 # Connect to Graph
 Connect-MgGraph -Scopes "DeviceManagementServiceConfig.Read.All, DeviceManagementServiceConfig.ReadWrite.All,"
 
 # Define CSV file
-$CsvFile = "C:\??"
+$CsvFile = Read-Host "Please enter the path to your CSV file"
 
 $ImportedCsv = Import-Csv -Path $CsvFile
 
@@ -18,7 +19,7 @@ foreach ($row in $ImportedCSV) {
 
 
     if ([string]::IsNullOrWhiteSpace($serial)) {
-        Write-Host "Empty asset tag - skipping..."
+        Write-Host "Empty serial number - skipping..."
         continue
     }
 
@@ -28,12 +29,11 @@ foreach ($row in $ImportedCSV) {
     if ($autopilotdevices) {
         Write-Host "Serial number '$serial' FOUND in Autopilot." -ForegroundColor Green
     } else {
-    Write-Host "Serial number(s) '$serial' NOT FOUND in Autopilot..Exiting." -ForegroundColor Red
-    Exit
+    Write-Host "Serial number(s) '$serial' NOT FOUND in Autopilot." -ForegroundColor Red
     }
 } 
 
-$question = Read-Host "Would you like to remove these devices/serials from Autopilot? (Y/N)"
+$question = Read-Host "Would you like to remove these serial numbers from Autopilot? (Y/N)"
 if ($question -eq "Y") {
     foreach ($row in $ImportedCSV) {
         $serial = $row.Serial
@@ -48,13 +48,13 @@ if ($question -eq "Y") {
         if ($deviceToRemove) {
             foreach ($device in $deviceToRemove) {
                 Write-Host "Removing device with serial number '$serial'..." -ForegroundColor Yellow
-                Remove-MgBetaDeviceManagementWindowsAutopilotDeviceIdentity -WindowsAutopilotDeviceIdentityId $device.Id -Verbose
+                Remove-MgBetaDeviceManagementWindowsAutopilotDeviceIdentity -WindowsAutopilotDeviceIdentityId $device.Id
                 Write-Host "Device removed successfully." -ForegroundColor Green
             }
         } else {
-            Write-Host "No device found with serial number '$serial'. Skipping." -ForegroundColor Yellow
+            Write-Host "No serial numbers found with '$serial'. Skipping." -ForegroundColor Yellow
         }
     }
 }
 
-Write-Host "Don't forget to sign out of the graph!." -ForegroundColor Yellow
+Write-Host "Don't forget to sign out of the graph! using 'Disconnect-MgGraph'" -ForegroundColor Cyan
