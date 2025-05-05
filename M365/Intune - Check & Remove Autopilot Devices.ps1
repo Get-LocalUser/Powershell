@@ -2,7 +2,7 @@
 $RequiredModule = Get-InstalledModule -Name Microsoft.Graph.Beta
 if (!$RequiredModule) {
         Install-Module -Name Microsoft.Graph.Beta
-        Import-Module
+        Import-Module -Name Microsoft.Graph.Beta
     }
 
 # Connect to Graph
