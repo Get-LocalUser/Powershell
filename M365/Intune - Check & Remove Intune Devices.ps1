@@ -1,5 +1,5 @@
 # Create a log
-$timestamp = Get-Date -Format "MM-dd-yyyy HH-mm-ss"
+$timestamp = Get-Date -Format "MM-dd HH-mm-ss"
 $logPath = "C:\IntuneDeviceRemoval_$timestamp.log"
 Start-Transcript -Path $logPath -Append
 
