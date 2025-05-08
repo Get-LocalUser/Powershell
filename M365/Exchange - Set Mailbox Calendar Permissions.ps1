@@ -36,23 +36,11 @@ If (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]:
 }
 
 # Import Exchange module or install if not present
-try {
-    Import-Module -Name ExchangeOnlineManagement -ErrorAction Stop
-    Write-Host "Module imported succeessfully." -ForegroundColor Green
-}
-catch {
-    Write-Host "Failed to import the module: $_"
-    Write-Host "Attempting to install the Exchange PS module" -ForegroundColor Yellow
-    try {
-        Install-Module -Name ExchangeOnlineManagement -Scope CurrentUser -Force -ErrorAction Stop
-        Import-Module -Name ExchangeOnlineManagement -ErrorAction Stop
-        Write-Host "Module installed and imported successfully."
+$RequiredModule = Get-InstalledModule -Name ExchangeOnlineManagement
+if (!$RequiredModule) {
+        Install-Module -Name ExchangeOnlineManagement
     }
-    catch {
-        Write-Host "Failed to install or import the module: $_"
-        exit 1
-    }
-}
+Import-Module -Name ExchangeOnlineManagement
 
 # Connect to Exchange Online with admin account
 try {
