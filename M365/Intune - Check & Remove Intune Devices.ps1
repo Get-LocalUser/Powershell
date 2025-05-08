@@ -1,4 +1,7 @@
-
+# Create a log
+$timestamp = Get-Date -Format "MM-dd-yyyy HH-mm-ss"
+$logPath = "C:\IntuneDeviceRemoval_$timestamp.log"
+Start-Transcript -Path $logPath -Append
 
 # Check if Graph Beta module is installed
 $RequiredModule = Get-InstalledModule -Name Microsoft.Graph.Beta
@@ -56,3 +59,5 @@ if ($question -eq "Y") {
 }
 
 Write-Host "Don't forget to sign out of the graph! using 'Disconnect-MgGraph'" -ForegroundColor Cyan
+
+Stop-Transcript
