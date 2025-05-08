@@ -2,8 +2,8 @@
 $RequiredModule = Get-InstalledModule -Name Microsoft.Graph.Beta
 if (!$RequiredModule) {
         Install-Module -Name Microsoft.Graph.Beta
-        Import-Module -Name Microsoft.Graph.Beta
     }
+Import-Module -Name Microsoft.Graph.Beta
 
 # Connect to Graph
 Connect-MgGraph -Scopes "DeviceManagementServiceConfig.Read.All, DeviceManagementServiceConfig.ReadWrite.All,"
@@ -12,6 +12,9 @@ Connect-MgGraph -Scopes "DeviceManagementServiceConfig.Read.All, DeviceManagemen
 $CsvFile = Read-Host "Please enter the path to your CSV file"
 
 $ImportedCsv = Import-Csv -Path $CsvFile
+
+# Create a hashtable to store lookup results
+$deviceLookup = @{}
 
 # Iterate over the serial numbers in the CSV file
 foreach ($row in $ImportedCSV) {
@@ -25,6 +28,7 @@ foreach ($row in $ImportedCSV) {
 
     # Get the devices in the Autopilot service
     $autopilotdevices = Get-MgBetaDeviceManagementWindowsAutopilotDeviceIdentity | Where-Object {$_.SerialNumber -eq $serial}
+    $deviceLookup[$serial] = $autopilotdevices
 
     if ($autopilotdevices) {
         Write-Host "Serial number '$serial' FOUND in Autopilot." -ForegroundColor Green
@@ -35,21 +39,15 @@ foreach ($row in $ImportedCSV) {
 
 $question = Read-Host "Would you like to remove these serial numbers from Autopilot? (Y/N)"
 if ($question -eq "Y") {
-    foreach ($row in $ImportedCSV) {
-        $serial = $row.Serial
-        if ([string]::IsNullOrWhiteSpace($serial)) {
-            continue
-        }
-        
-        # Get the device identity object that matches the serial number
-        $deviceToRemove = Get-MgBetaDeviceManagementWindowsAutopilotDeviceIdentity | Where-Object {$_.SerialNumber -eq $serial}
+    foreach ($serial in $deviceLookup.Keys) {
+        $autopilotdevices = $deviceLookup[$serial]
         
         # Then remove each matching device by its ID
-        if ($deviceToRemove) {
-            foreach ($device in $deviceToRemove) {
+        if ($autopilotdevices) {
+            foreach ($autopilotdevice in $autopilotdevices) {
                 Write-Host "Removing device with serial number '$serial'..." -ForegroundColor Yellow
-                Remove-MgBetaDeviceManagementWindowsAutopilotDeviceIdentity -WindowsAutopilotDeviceIdentityId $device.Id
-                Write-Host "Device removed successfully." -ForegroundColor Green
+                Remove-MgBetaDeviceManagementWindowsAutopilotDeviceIdentity -WindowsAutopilotDeviceIdentityId $autopilotdevice.Id
+                Write-Host "Device with serial number '$serial' removed successfully." -ForegroundColor Green
             }
         } else {
             Write-Host "No serial numbers found with '$serial'. Skipping." -ForegroundColor Yellow
