@@ -1,6 +1,6 @@
 # Create a log
 $timestamp = Get-Date -Format "MM-dd-yyyy HH-mm-ss"
-$logPath = "C:\IntuneDeviceRemoval_$timestamp.log"
+$logPath = "C:\IntuneAutopilotRemoval_$timestamp.log"
 Start-Transcript -Path $logPath -Append
 
 # Check of Graph Beta module is installed
