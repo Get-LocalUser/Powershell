@@ -1,39 +1,48 @@
 # Create a log
-$timestamp = Get-Date -Format "MM-dd-yyyy HH-mm-ss"
-$logPath = "C:\IntuneDeviceRemoval_$timestamp.log"
+$timestamp = Get-Date -Format "MM-dd-yyyy_HH-mm-ss"
+$logPath = Join-Path -Path $PSScriptRoot -ChildPath "Intune_Device_Removal_$timestamp.log"
 Start-Transcript -Path $logPath -Append
 
-# Check if Graph Beta module is installed
-$RequiredModule = Get-InstalledModule -Name Microsoft.Graph.Beta
-if (!$RequiredModule) {
+# Ensure the Microsoft.Graph module is installed
+if (-not (Get-InstalledModule -Name Microsoft.Graph.Beta)) {
     Install-Module -Name Microsoft.Graph.Beta
 }
-Import-Module -Name Microsoft.Graph.Beta
+Import-Module Microsoft.Graph.Beta
 
-# Connect to Graph
-Connect-MgGraph -Scopes "Device.Read.All, Directory.ReadWrite.All, Directory.Read.All, Device.ReadWrite.All,"
+# Connect to Microsoft Graph
+Connect-MgGraph -Scopes "Device.Read.All", "DeviceManagementManagedDevices.ReadWrite.All"
 
-# Define CSV file
+# Prompt for CSV file path
 $CsvFile = Read-Host "Please enter the path to your CSV file"
+if (-not (Test-Path -Path $CsvFile)) {
+    Write-Host "The file path provided does not exist. Exiting script." -ForegroundColor Red
+    Stop-Transcript
+    exit
+}
 $ImportedCsv = Import-Csv -Path $CsvFile
+
+# Retrieve all managed devices
+Write-Host "Retrieving all managed devices from Intune..." -ForegroundColor Cyan
+$allDevices = Get-MgBetaDeviceManagementManagedDevice -All
 
 # Create a hashtable to store lookup results
 $deviceLookup = @{}
 
 # Iterate over the asset tags in the CSV file
-foreach ($row in $ImportedCSV) {
+foreach ($row in $ImportedCsv) {
     $assetTag = $row.AssetTag
 
     if ([string]::IsNullOrWhiteSpace($assetTag)) {
-        Write-Host "Empty asset tag - skipping..."
+        Write-Host "Empty asset tag - skipping..." -ForegroundColor Yellow
         continue
     }
 
-    # Get the devices in Intune
-    $devices = Get-MgBetaDeviceManagementManagedDevice | Where-Object {$_.DeviceName -eq $assetTag}
-    $deviceLookup[$assetTag] = $devices
+    # Perform case-insensitive comparison
+    $matchedDevices = $allDevices | Where-Object { $_.DeviceName -eq $assetTag }
 
-    if ($devices) {
+    $deviceLookup[$assetTag] = $matchedDevices
+
+    if ($matchedDevices) {
         Write-Host "Device '$assetTag' FOUND in Intune." -ForegroundColor Green
     } else {
         Write-Host "Device '$assetTag' NOT FOUND in Intune." -ForegroundColor Red
@@ -45,7 +54,6 @@ if ($question -eq "Y") {
     foreach ($assetTag in $deviceLookup.Keys) {
         $devices = $deviceLookup[$assetTag]
         
-        # Then remove each matching device by its ID
         if ($devices) {
             foreach ($device in $devices) {
                 Write-Host "Removing device with asset tag '$assetTag'..." -ForegroundColor Yellow
@@ -58,6 +66,6 @@ if ($question -eq "Y") {
     }
 }
 
-Write-Host "Don't forget to sign out of the graph! using 'Disconnect-MgGraph'" -ForegroundColor Cyan
+Write-Host "Operation completed. Don't forget to sign out of Microsoft Graph using 'Disconnect-MgGraph'." -ForegroundColor Cyan
 
 Stop-Transcript
