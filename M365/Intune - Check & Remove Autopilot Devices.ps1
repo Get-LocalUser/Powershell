@@ -4,11 +4,10 @@ $logPath = "C:\IntuneAutopilotRemoval_$timestamp.log"
 Start-Transcript -Path $logPath -Append
 
 # Check of Graph Beta module is installed
-$RequiredModule = Get-InstalledModule -Name Microsoft.Graph.Beta
-if (!$RequiredModule) {
-        Install-Module -Name Microsoft.Graph.Beta
-    }
-Import-Module -Name Microsoft.Graph.Beta
+if (-not (Get-InstalledModule -Name Microsoft.Graph.Beta)) {
+    Install-Module -Name Microsoft.Graph.Beta
+}
+Import-Module Microsoft.Graph.Beta
 
 # Connect to Graph
 Connect-MgGraph -Scopes "DeviceManagementServiceConfig.Read.All, DeviceManagementServiceConfig.ReadWrite.All,"
