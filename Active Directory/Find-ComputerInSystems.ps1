@@ -10,7 +10,7 @@ $devicetoshow = [ordered]@{}
 $Compresults = Get-ADComputer -Filter "Name -like '*$computer*'" -ErrorAction SilentlyContinue
 if ($Compresults.Count -gt 1) {
     Write-Host "Multiple computers found in AD. Verify entries before deleting" -ForegroundColor DarkRed
-    $compresults | ForEach-Object {Write-Host $_.Name} 
+    $compresults | ForEach-Object {"Write-Host Active Directory:$($_.Name)"} 
 } else {
     $devicetoshow['Active Directory'] = $Compresults.Name
 }
@@ -26,18 +26,19 @@ if (Test-Path $cmModulePath) {
 }
 
 # Change drive for SCCM
-CD P02:
+$currentlocation = Get-Location 
+Set-Location P02:
 
 # Get SCCM Computer
 $Compresults = Get-CMDevice -Name $computer -ErrorAction SilentlyContinue
 if ($Compresults.Count -gt 1) {
     Write-Host "Multiple SCCM computers found. Verify entries before deleting" -ForegroundColor DarkRed
-    $compresults | ForEach-Object {Write-Host $_.Name} 
+    $compresults | ForEach-Object {"Write-Host SCCM:$($_.Name)"} 
 } else {
     $devicetoshow['SCCM'] = $Compresults.Name
 }
 
-cd C:\Users
+Set-Location -Path $currentlocation
 
 # Check of Graph Beta module is installed
 if (-not (Get-InstalledModule -Name Microsoft.Graph.Beta)) {
@@ -52,7 +53,7 @@ Connect-MgGraph -Scopes "Device.Read.All" -NoWelcome
 $Compresults = Get-MgBetaDeviceManagementManagedDevice -Filter "deviceName eq '$computer'"
 if ($Compresults.Count -gt 1) {
     Write-Host "Multiple Intune computers found. Verify entries before deleting" -ForegroundColor DarkRed
-    $compresults | ForEach-Object {Write-Host "Intune $($_.Name)"} 
+    $compresults | ForEach-Object {Write-Host "Intune: $($_.Name)"} 
 } else {
     $devicetoshow['Intune'] = $Compresults.DeviceName
 }
