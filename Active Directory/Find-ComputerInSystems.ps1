@@ -1,7 +1,7 @@
 
 # Enter comp name
 $computer = Read-Host "Enter the name of the device you want to search for"
-Write-Host "Retrieving devices that match $($computer)" -ForegroundColor Yellow
+Write-Host "Retrieving entries that match $($computer)" -ForegroundColor Yellow
 
 ### put device findings in this hashtable
 $devicetoshow = [ordered]@{}
@@ -59,8 +59,8 @@ if ($Compresults.Count -gt 1) {
 }
 
 if ($devicetoshow.Values -gt 0) {
-    Write-Host "Devices found in the following systems" -ForegroundColor Yellow
+    Write-Host "Device found in the following systems" -ForegroundColor Yellow
     $devicetoshow | Format-Table -AutoSize
 } else {
-    Write-Host "No devices found with that name" -ForegroundColor Red
+    Write-Host "No entries found with that name" -ForegroundColor Red
 }
