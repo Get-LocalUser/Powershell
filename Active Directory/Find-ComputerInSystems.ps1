@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Device Lookup Script - Searches for computer records across Active Directory, SCCM, and Intune.
+    Device Lookup Script - Searches for computer records across Active Directory, SCCM, Intune, & Autopilot.
 
 .DESCRIPTION
     This script allows you to search for computers using a single name or a bulk list (via CSV).
@@ -8,15 +8,16 @@
       - Active Directory (AD)
       - Microsoft Endpoint Configuration Manager (MECM/SCCM)
       - Microsoft Intune (via Microsoft Graph API)
+      - Autopilot (via Microsoft Graph API)
 
     Results are shown in the console and optionally exported to a CSV file in your Downloads folder.
 
 .FUNCTIONALITY
     - Imports and verifies required modules (ActiveDirectory, ConfigurationManager, Microsoft.Graph.Beta).
     - Connects to Microsoft Graph (Device.Read.All scope required).
-    - Searches for devices across AD, SCCM, and Intune.
+    - Searches for devices across AD, SCCM, Intune, & Autopilot.
     - Supports both interactive and automated use.
-    - Outputs results with ✓ / X markers.
+    - Outputs results with ✓ markers or 'False'.
     - Exports bulk results to CSV in the user's Downloads folder.
     - Asks whether to disconnect from Microsoft Graph after completion.
 
@@ -52,6 +53,13 @@ param(
 # ------------------------------ Install & Import Modules ------------------------------
 
 function Initialize-Modules {
+    if ($Global:DeviceScriptInitialized) {
+        Write-Host "Modules already initialized. Skipping module checks." -ForegroundColor Green
+        return
+    }
+
+    # ------------------------ Module Initialization ------------------------
+
     # Active Directory
     if (-not (Get-Module -ListAvailable -Name ActiveDirectory)) {
         Write-Host "ActiveDirectory module not found. Please install RSAT: Active Directory." -ForegroundColor Red
@@ -70,15 +78,19 @@ function Initialize-Modules {
         exit
     }
 
-    # Graph Beta
+    # Microsoft Graph Beta
     if (-not (Get-InstalledModule -Name Microsoft.Graph.Beta -ErrorAction SilentlyContinue)) {
         Write-Host "Installing Graph module. This will take a few minutes..." -ForegroundColor Yellow
-        Install-Module -Name Microsoft.Graph.Beta
+        Install-Module -Name Microsoft.Graph.Beta -Scope CurrentUser -Force
     }
-    Import-Module Microsoft.Graph.Beta -ErrorAction Ignore # Bookings always throws an error for some reason
+    Import-Module Microsoft.Graph.Beta -ErrorAction Ignore
     Write-Host "Graph module imported successfully." -ForegroundColor Yellow
 
     Connect-MgGraph -Scopes "Device.Read.All" -NoWelcome
+
+    # Mark as initialized for the session
+    $Global:DeviceScriptInitialized = $true
+    Write-Host "Modules initialized." -ForegroundColor Yellow
 }
 
 # ------------------------------ End of Modules ------------------------------
@@ -94,16 +106,21 @@ function Search-SingleComputer {
         InputName = $Computer
 
         # Active Directory
-        AD_ComputerFound       = $false
-        AD_ComputerName        = $null
+        AD_ComputerFound        = $false
+        AD_ComputerName         = $null
 
         # SCCM
-        SCCM_ComputerFound     = $false
-        SCCM_ComputerName      = $null
+        SCCM_ComputerFound      = $false
+        SCCM_ComputerName       = $null
 
         # Intune
-        Intune_ComputerFound   = $false
-        Intune_ComputerName    = $null
+        Intune_ComputerFound    = $false
+        Intune_ComputerName     = $null
+        Intune_SerialNumber     = $null
+
+        # Autopilot
+        Autopilot_ComputerFound = $false
+        Autopilot_SerialNumber  = $null
     }
     
 
@@ -141,7 +158,7 @@ function Search-SingleComputer {
     # Set working dirtectory back to the starting directory    
     Set-Location -Path $currentlocation
 
-    # Retrieve all managed devices
+    # Get Intune computer
     $Compresults = Get-MgBetaDeviceManagementManagedDevice -Filter "deviceName eq '$Computer'"
     if ($Compresults.Count -gt 1) {
         Write-Host "Multiple Intune computers found. Verify entries before deleting" -ForegroundColor Red
@@ -149,9 +166,25 @@ function Search-SingleComputer {
     } elseif ($Compresults) {
         $deviceresult.Intune_ComputerFound   = $true
         $deviceresult.Intune_ComputerName    = $Compresults.DeviceName
+        $deviceresult.Intune_SerialNumber    = $Compresults.SerialNumber
     }
 
-    if ($deviceresult.AD_ComputerFound -or $deviceresult.SCCM_ComputerFound -or $deviceresult.Intune_ComputerFound) {
+    # Get Autopilot enrollment
+    if ($deviceresult.Intune_SerialNumber) {
+        $Compresults = Get-MgBetaDeviceManagementWindowsAutopilotDeviceIdentity -ErrorAction SilentlyContinue | Where-Object { $_.SerialNumber -eq $deviceresult.Intune_SerialNumber }
+    }
+    
+    if ($Compresults.Count -gt 1) {
+        Write-Host "Multiple Autopilot devices found. Verify entries before deleting" -ForegroundColor Red
+        $compresults | ForEach-Object {Write-Host "Autopilot: $($_.DisplayName)"} 
+    } elseif ($Compresults) {
+        $deviceresult.Autopilot_ComputerFound = $true
+        $deviceresult.Autopilot_SerialNumber  = $Compresults.SerialNumber
+    }
+
+
+    # Display results of previous checks
+    if ($deviceresult.AD_ComputerFound -or $deviceresult.SCCM_ComputerFound -or $deviceresult.Intune_ComputerFound -or $deviceresult.Autopilot_ComputerFound) {
         Write-Host "Device found in one or more systems." -ForegroundColor Yellow
     } else { 
         Write-Host "No devices found in any system." -ForegroundColor Red
@@ -160,9 +193,10 @@ function Search-SingleComputer {
     $Check = "✓"
     $output = [PSCustomObject]@{
         ComputerName    = $deviceresult.InputName
-        ActiveDirectory = if ($deviceresult.AD_ComputerFound)      { $Check } else { "X" }
-        SCCM            = if ($deviceresult.SCCM_ComputerFound)    { $Check } else { "X" }
-        Intune          = if ($deviceresult.Intune_ComputerFound)  { $Check } else { "X" }
+        ActiveDirectory = if ($deviceresult.AD_ComputerFound)       { $Check } else { "False" }
+        SCCM            = if ($deviceresult.SCCM_ComputerFound)     { $Check } else { "False" }
+        Intune          = if ($deviceresult.Intune_ComputerFound)   { $Check } else { "False" }
+        Autopilot       = if ($deviceresult.Autopilot_ComputerFound){ $Check } else { "False" }
     }
 
     $output | Format-Table -AutoSize
@@ -185,7 +219,7 @@ function Search-BulkComputers {
 
     try {
         $computers = Import-Csv $CsvPath
-        Write-Host "Processing $($computers.Count) computers from CSV..." -ForegroundColor Yellow
+        Write-Host "`nProcessing $($computers.Count) computers from CSV..." -ForegroundColor Yellow
 
         $results = @()
         $counter = 0
@@ -207,9 +241,10 @@ function Search-BulkComputers {
         $Check = "✓"
         $result = [PSCustomObject]@{
             ComputerName     = $computerName
-            ActiveDirectory  = if ($deviceInfo.AD_ComputerFound)      { $check } else { "" }
-            SCCM             = if ($deviceInfo.SCCM_ComputerFound)    { $check } else { "" }
-            Intune           = if ($deviceInfo.Intune_ComputerFound)  { $check } else { "" }
+            ActiveDirectory  = if ($deviceInfo.AD_ComputerFound)       { $check } else { "False" }
+            SCCM             = if ($deviceInfo.SCCM_ComputerFound)     { $check } else { "False" }
+            Intune           = if ($deviceInfo.Intune_ComputerFound)   { $check } else { "False" }
+            Autopilot        = if ($deviceInfo.Autopilot_ComputerFound){ $check } else { "False" }
         }
 
             $results += $result
@@ -224,18 +259,19 @@ function Search-BulkComputers {
     $Pathway = "C:\Users\$env:USERNAME\Downloads\"
     $ExportFile = Join-Path -Path $Pathway -ChildPath "Computersfound.csv"
 
-    if ($results) {
+    if ($results) { 
         $Utf8WithBom = New-Object System.Text.UTF8Encoding $true
         $csvContent = $results | ConvertTo-Csv -NoTypeInformation | Out-String
         [System.IO.File]::WriteAllText($ExportFile, $csvContent, $Utf8WithBom)
         Write-Host "`nResults exported to: $ExportFile" -ForegroundColor Yellow
+        Write-Host "`nOpen in Excel for best visual." -ForegroundColor Magenta
     }
     else {
         Write-Host "Not exported" -ForegroundColor Yellow
     }
 
     return $results
-
+    Write-Host "`nOpen in Excel for best visual." -ForegroundColor Magenta
 }
 
 
